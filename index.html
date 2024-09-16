@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Bot</title>
+    <script async src="https://api.glia.com/salemove_integration.js"></script>
+</head>
+<body>
+    
+
+    <script>        
+        var queueView = document.createElement('div');
+        document.body.appendChild(queueView);
+
+        var engagementView = document.createElement('div');
+        document.body.appendChild(engagementView);
+
+        sm.getApi({version: 'v1'}).then(function(salemove) {
+        function onQueueStateUpdate(queueState) {
+            if (queueState.state === queueState.QUEUE_STATES.CAN_QUEUE) {
+            queueView.addEventListener('click', onClickToQueue);
+            queueView.innerText = 'Click to queue.';
+            } else if (queueState.state === queueState.QUEUE_STATES.QUEUED) {
+            showWaitingView(queueState.ticket);
+            salemove.getQueueWaitDuration()
+                .then(showWaitingViewWithTimer(queueState.ticket));
+            } else if (queueState.state === queueState.QUEUE_STATES.CANNOT_QUEUE) {
+            queueView.removeEventListener('click', onClickToQueue);
+            queueView.innerText = 'Cannot queue.';
+            }
+        }
+
+        function onClickToQueue() {
+            salemove.queueForEngagement('text').catch(showFailedToQueueView);
+        }
+
+        salemove.addEventListener(salemove.EVENTS.QUEUE_STATE_UPDATE, onQueueStateUpdate);
+        salemove.addEventListener(salemove.EVENTS.ENGAGEMENT_START, showEngagedView);
+        salemove.addEventListener(salemove.EVENTS.ENGAGEMENT_END, showNotEngagedView);
+        });
+
+        function showWaitingView(queueTicket) {
+        queueView.innerText = 'Hang on.';
+        queueView.appendChild(cancelButton(queueTicket));
+        }
+
+        function showWaitingViewWithTimer(queueTicket) {
+        return function(waitDuration) {
+            queueView.innerText = 'Hang on. This usually takes ' +
+            waitDuration.averageDurationInSeconds + ' seconds.';
+            queueView.appendChild(cancelButton(queueTicket));
+        };
+        }
+
+        function showFailedToQueueView(error) {
+        queueView.innerText = 'Failed to queue!';
+        }
+
+        function showEngagedView(engagement) {
+        engagementView.innerText = 'Engaged with ' + engagement.operator.name + '!';
+        }
+
+        function showNotEngagedView(engagement) {
+        engagementView.innerText = 'Not engaged.';
+        }
+
+        function cancelButton(queueTicket) {
+        var button = document.createElement('span');
+        button.innerText = ' Click here to cancel.';
+        button.addEventListener('click', function() {
+            queueTicket.cancel();
+        });
+        return button;
+        }
+    </script>
+</body>
+</html>
